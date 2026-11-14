@@ -49,7 +49,7 @@
     <h1>Jazz Chord App</h1>
     <p class="sub">Akkord eingeben (Tastatur oder Buttons) → Notennamen + Notenbild. Englische Notation (C, D, E, F, G, A, B).</p>
   </div>
-  <img class="logo" src="logo.jpg" alt="Cross Jazz Company Logo" width="88" height="88">
+  <img class="logo" src="logo.png" alt="Cross Jazz Company Logo" width="88" height="88">
 </div>
 
 <div class="card">
@@ -169,14 +169,47 @@ function spell(root, semis, degree){
   return {letter, alter};
 }
 
+
+// Einfache enharmonische Schreibweise für die Textanzeige (möglichst wenig Vorzeichen)
+function simpleName(n) {
+  const pc = (LETTER_PC[n.letter] + n.alter + 120) % 12;
+  // bevorzugte Schreibweisen (0–11)
+  const preferred = [
+    {letter:'C', alter:0},  // 0
+    {letter:'C', alter:1},  // 1  C#
+    {letter:'D', alter:0},  // 2
+    {letter:'E', alter:-1}, // 3  Eb
+    {letter:'E', alter:0},  // 4
+    {letter:'F', alter:0},  // 5
+    {letter:'F', alter:1},  // 6  F#
+    {letter:'G', alter:0},  // 7
+    {letter:'A', alter:-1}, // 8  Ab
+    {letter:'A', alter:0},  // 9
+    {letter:'B', alter:-1}, // 10 Bb
+    {letter:'B', alter:0},  // 11
+  ];
+  const p = preferred[pc];
+  const acc = p.alter > 0 ? '♯'.repeat(p.alter) : p.alter < 0 ? '♭'.repeat(-p.alter) : '';
+  return p.letter + acc;
+}
+
 function chordNotes(root, quality){
   return QUALITIES[quality].iv.map(([semis,deg]) => {
     const n = spell(root, semis, deg);
+    // Für Anzeige & Notenbild: möglichst einfache enharmonische Schreibweise
+    const pc = (LETTER_PC[n.letter] + n.alter + 120) % 12;
+    const preferred = [
+      {letter:'C', alter:0}, {letter:'C', alter:1}, {letter:'D', alter:0},
+      {letter:'E', alter:-1}, {letter:'E', alter:0}, {letter:'F', alter:0},
+      {letter:'F', alter:1}, {letter:'G', alter:0}, {letter:'A', alter:-1},
+      {letter:'A', alter:0}, {letter:'B', alter:-1}, {letter:'B', alter:0}
+    ];
+    const simple = preferred[pc];
     let oct = 4;
-    const letterIdx = LETTERS.indexOf(n.letter);
+    const letterIdx = LETTERS.indexOf(simple.letter);
     const rootLetterIdx = LETTERS.indexOf(root.letter);
     if(letterIdx < rootLetterIdx) oct = 5;
-    return {...n, octave: oct, semis};
+    return {...simple, octave: oct, semis};
   });
 }
 
@@ -289,7 +322,7 @@ function update(){
   refreshButtons();
   const notes = chordNotes(selRoot, selQuality);
   symEl.textContent = rootLabel(selRoot) + selQuality;
-  namesEl.textContent = notes.map(n => n.letter + (n.alter>0?'♯'.repeat(n.alter):n.alter<0?'♭'.repeat(-n.alter):'')).join('  –  ');
+  namesEl.textContent = notes.map(n => simpleName(n)).join('  –  ');
   staffEl.innerHTML = renderStaff(notes);
 }
 
