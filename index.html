@@ -39,11 +39,23 @@
   <div class="row" id="qualities"></div>
 </div>
 
+  <div class="label">Wiedergabe</div>
+  <div class="row" id="playModes"></div>
+
 <div class="card">
   <div id="chordSymbol">–</div>
   <div id="noteNames">–</div>
   <div id="audioStatus" style="color:#b45309; font-size:.85rem;"></div>
   <div id="staff"></div>
+</div>
+
+<div class="card" style="font-size:.8rem; color:#6b7280;">
+  <strong>Hinweise zur Audioausgabe:</strong><br/>
+  &#8226; Der Ton startet erst nach dem ersten Tipp auf „Abspielen“ (Browser-Regel).<br/>
+  &#8226; iPhone/iPad: Der stumm-Schalter an der Seite des Geräts schaltet auch die App-Töne stumm. Schalter auf „Klingelton“ stellen.<br/>
+  &#8226; Bluetooth: Bei verbundenen (oder kürzlich verbundenen) Kopfhörern/Lautsprechern läuft der Ton dorthin, nicht aus dem Geräte-Lautsprecher. Im Zweifel Bluetooth deaktivieren.<br/>
+  &#8226; Medienlautstärke (nicht Klingeltonlautstärke) verwenden, am besten während der Wiedergabe hochdrehen.<br/>
+  &#8226; In der Canvas-Vorschau ist Audio blockiert – die heruntergeladene Datei im Browser öffnen.
 </div>
 
 <script>
@@ -184,6 +196,7 @@ let selQuality = 'maj7';
 
 const rootsEl = document.getElementById('roots');
 const qualEl = document.getElementById('qualities');
+const playModesEl = document.getElementById('playModes');
 const input = document.getElementById('chordInput');
 const symEl = document.getElementById('chordSymbol');
 const namesEl = document.getElementById('noteNames');
@@ -206,6 +219,14 @@ Object.entries(QUALITIES).forEach(([q,def])=>{
   qualEl.appendChild(b);
 });
 
+PLAY_MODES.forEach(m=>{
+  const b = document.createElement('button');
+  b.textContent = m.label;
+  b.dataset.mode = m.id;
+  b.onclick = ()=>{ playMode = m.id; refreshButtons(); };
+  playModesEl.appendChild(b);
+});
+
 function rootLabel(r){ return r.letter + (r.alter>0 ? '#'.repeat(r.alter) : r.alter<0 ? 'b'.repeat(-r.alter) : ''); }
 
 function setRoot(label){
@@ -216,6 +237,7 @@ function setRoot(label){
 function refreshButtons(){
   document.querySelectorAll('#roots button').forEach(b=> b.classList.toggle('active', b.dataset.root === rootLabel(selRoot)));
   document.querySelectorAll('#qualities button').forEach(b=> b.classList.toggle('active', b.dataset.q === selQuality));
+  document.querySelectorAll('#playModes button').forEach(b=> b.classList.toggle('active', b.dataset.mode === playMode));
 }
 
 function update(){
@@ -235,6 +257,13 @@ function update(){
 
 // ---------- Audio (Web Audio API, keine Datenbank nötig) ----------
 let actx = null;
+let playMode = 'arpFast'; // 'sim' | 'arpFast' | 'arpSlow'
+const PLAY_MODES = [
+  {id:'sim',     label:'Simultan'},
+  {id:'arpFast', label:'Arpeggio schnell'},
+  {id:'arpSlow', label:'Arpeggio langsam'}
+];
+const MODE_GAP = {sim:0, arpFast:0.12, arpSlow:0.35};
 function midiFromNote(n){
   // MIDI-Nummer: C4 = 60
   const base = {C:0,D:2,E:4,F:5,G:7,A:9,B:11}[n.letter];
@@ -248,15 +277,17 @@ async function playChord(notes){
       try { await actx.resume(); } catch(e) { audioStatus = 'Audio blockiert (Vorschau): Bitte Datei herunterladen und direkt im Browser öffnen.'; }
     }
     if(actx.state !== 'running'){
+      audioStatus = 'Audio-Kontext-Status: ' + actx.state + ' (nicht aktiv)';
       showStatus();
       return;
     }
-    audioStatus = '';
+    audioStatus = 'Audio aktiv (' + actx.state + ', ' + actx.sampleRate + ' Hz)';
+    showStatus();
     const t0 = actx.currentTime + 0.02;
     const dur = 1.8;
     notes.forEach((n,i)=>{
       const freq = 440 * Math.pow(2, (midiFromNote(n)-69)/12);
-      const start = t0 + i*0.06; // Akkord leicht "gerollt"
+    const start = t0 + i*MODE_GAP[playMode]; // simultan oder gerollt
       // zwei Oszillatoren für einen wärmeren Klang
       [['triangle',0.5],['sine',0.35]].forEach(([type,gain])=>{
         const osc = actx.createOscillator();
