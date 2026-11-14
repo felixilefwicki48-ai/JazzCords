@@ -42,6 +42,7 @@
 <div class="card">
   <div id="chordSymbol">–</div>
   <div id="noteNames">–</div>
+  <div id="audioStatus" style="color:#b45309; font-size:.85rem;"></div>
   <div id="staff"></div>
 </div>
 
@@ -134,24 +135,22 @@ function spell(root, semis, degree){
 function chordNotes(root, quality){
   return QUALITIES[quality].iv.map(([semis,deg]) => {
     const n = spell(root, semis, deg);
-    // Oktave fürs Notenbild: um die Mitte (Oktave 4) herum
-    const rootLetterIdx = LETTERS.indexOf(root.letter);
-    const letterIdx = LETTERS.indexOf(n.letter);
     let oct = 4;
-    const dist = ((letterIdx - rootLetterIdx) % 7 + 7) % 7;
-    if(dist >= 4) oct = 5; // obere Töne eine Oktave höher setzen
+    const letterIdx = LETTERS.indexOf(n.letter);
+    const rootLetterIdx = LETTERS.indexOf(root.letter);
+    if(letterIdx < rootLetterIdx) oct = 5; // aufsteigend halten
     return {...n, octave: oct, semis};
   });
 }
 
 // ---------- Notenbild (SVG) ----------
 const ACC = {1:'♯',0:'',[-1]:'♭',2:'♯♯',[-2]:'♭♭'};
-// diatonische Stufe relativ zum mittleren B4 (Notenlinie 3, y=100)
-const STAFF_STEP = {C:0,D:1,E:2,F:3,G:4,A:5,B:6}; // pro Oktave
+// diatonische Stufe: C=0 ... B=6, C4 = Position 0, B4 = Position 6 (Mittellinie)
+const STAFF_STEP = {C:0,D:1,E:2,F:3,G:4,A:5,B:6};
 
 function noteY(letter, octave){
-  const step = (octave-4)*7 + STAFF_STEP[letter]; // B4 = 0
-  return 100 - step*5; // 5px pro Stufe, B4 auf Mittellinie
+  const pos = (octave-4)*7 + STAFF_STEP[letter];
+  return 100 - (pos-6)*5; // 5px pro Stufe, B4 auf der Mittellinie (y=100)
 }
 
 function renderStaff(notes){
@@ -241,10 +240,18 @@ function midiFromNote(n){
   const base = {C:0,D:2,E:4,F:5,G:7,A:9,B:11}[n.letter];
   return 12*(n.octave+1) + base + n.alter;
 }
-function playChord(notes){
+let audioStatus = '';
+async function playChord(notes){
   try{
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    if(actx.state === 'suspended') actx.resume();
+    if(actx.state === 'suspended'){
+      try { await actx.resume(); } catch(e) { audioStatus = 'Audio blockiert (Vorschau): Bitte Datei herunterladen und direkt im Browser öffnen.'; }
+    }
+    if(actx.state !== 'running'){
+      showStatus();
+      return;
+    }
+    audioStatus = '';
     const t0 = actx.currentTime + 0.02;
     const dur = 1.8;
     notes.forEach((n,i)=>{
@@ -265,8 +272,13 @@ function playChord(notes){
       });
     });
   }catch(e){
-    namesEl.textContent = 'Audio nicht verfügbar: ' + e.message;
+    audioStatus = 'Audio-Fehler: ' + e.message;
+    showStatus();
   }
+}
+function showStatus(){
+  const el = document.getElementById('audioStatus');
+  if(el) el.textContent = audioStatus;
 }
 document.getElementById('playBtn').onclick = ()=>{
   const parsed = parseChord(input.value);
