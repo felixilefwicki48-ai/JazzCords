@@ -7,8 +7,25 @@
 <style>
   :root { font-family: system-ui, sans-serif; color:#111827; background:#f8fafc; }
   body { margin:0; padding:24px; }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    max-width: 860px;
+    margin-bottom: 8px;
+  }
+  .header-text { flex: 1; min-width: 0; }
   h1 { font-size:1.4rem; margin:0 0 4px; }
   p.sub { color:#6b7280; margin:0 0 20px; font-size:.9rem; }
+  .logo {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  }
   .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px 20px; margin-bottom:16px; max-width:860px; }
   .row { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0; }
   button { border:1px solid #d1d5db; background:#fff; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:.95rem; min-height:40px; }
@@ -21,11 +38,19 @@
   .err { color:#dc2626; }
   svg { max-width:100%; }
   #audioStatus { color:#b45309; font-size:.85rem; min-height:1.2em; margin-top:6px; }
+  @media (max-width: 520px) {
+    .logo { width: 64px; height: 64px; }
+  }
 </style>
 </head>
 <body>
-<h1>Jazz Chord App</h1>
-<p class="sub">Akkord eingeben (Tastatur oder Buttons) → Notennamen + Notenbild. Englische Notation (C, D, E, F, G, A, B).</p>
+<div class="header">
+  <div class="header-text">
+    <h1>Jazz Chord App</h1>
+    <p class="sub">Akkord eingeben (Tastatur oder Buttons) → Notennamen + Notenbild. Englische Notation (C, D, E, F, G, A, B).</p>
+  </div>
+  <img class="logo" src="logo.jpg" alt="Cross Jazz Company Logo" width="88" height="88">
+</div>
 
 <div class="card">
   <div class="label">Eingabe</div>
