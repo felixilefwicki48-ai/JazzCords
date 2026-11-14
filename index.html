@@ -31,6 +31,7 @@
   <div class="row">
     <input id="chordInput" placeholder="z.B. Cmaj7, F#m7b5, Bb13" />
     <button id="parseBtn">Akkord anzeigen</button>
+    <button id="playBtn">&#9654; Abspielen</button>
   </div>
   <div class="label">Grundton</div>
   <div class="row" id="roots"></div>
@@ -232,6 +233,45 @@ function update(){
   namesEl.textContent = notes.map(n => n.letter + (n.alter>0?'♯'.repeat(n.alter):n.alter<0?'♭'.repeat(-n.alter):'')).join('  –  ');
   staffEl.innerHTML = renderStaff(notes);
 }
+
+// ---------- Audio (Web Audio API, keine Datenbank nötig) ----------
+let actx = null;
+function midiFromNote(n){
+  // MIDI-Nummer: C4 = 60
+  const base = {C:0,D:2,E:4,F:5,G:7,A:9,B:11}[n.letter];
+  return 12*(n.octave+1) + base + n.alter;
+}
+function playChord(notes){
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if(actx.state === 'suspended') actx.resume();
+    const t0 = actx.currentTime + 0.02;
+    const dur = 1.8;
+    notes.forEach((n,i)=>{
+      const freq = 440 * Math.pow(2, (midiFromNote(n)-69)/12);
+      const start = t0 + i*0.06; // Akkord leicht "gerollt"
+      // zwei Oszillatoren für einen wärmeren Klang
+      [['triangle',0.5],['sine',0.35]].forEach(([type,gain])=>{
+        const osc = actx.createOscillator();
+        const g = actx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0, start);
+        g.gain.linearRampToValueAtTime(gain*0.25, start+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, start+dur);
+        osc.connect(g).connect(actx.destination);
+        osc.start(start);
+        osc.stop(start+dur+0.1);
+      });
+    });
+  }catch(e){
+    namesEl.textContent = 'Audio nicht verfügbar: ' + e.message;
+  }
+}
+document.getElementById('playBtn').onclick = ()=>{
+  const parsed = parseChord(input.value);
+  if(parsed) playChord(chordNotes(parsed.root, parsed.quality));
+};
 
 document.getElementById('parseBtn').onclick = update;
 input.addEventListener('keydown', e=>{ if(e.key==='Enter') update(); });
